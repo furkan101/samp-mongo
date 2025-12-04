@@ -1,38 +1,32 @@
-#include <iostream>
-#include <thread>
-#include <vector>
+#include <amx/amx.h>
+#include <plugincommon.h>
 
-#include "plugin.h"
+typedef void (*logprintf_t)(char* format, ...);
+logprintf_t logprintf;
 
-#include <mongocxx/client.hpp>
-#include <mongocxx/instance.hpp>
-#include <mongocxx/uri.hpp>
-
-extern void *pAMXFunctions;
 void *pAMXFunctions;
 
-static mongocxx::instance instance{};
-
-PLUGIN_EXPORT unsigned int PLUGIN_CALL Supports() {
-    return SUPPORTS_VERSION | SUPPORTS_AMX_NATIVES;
-}
-
-PLUGIN_EXPORT bool PLUGIN_CALL Load(void **ppData) {
-    pAMXFunctions = ppData[PLUGIN_DATA_AMX_EXPORTS];
+extern "C" {
     
-    printf(" [samp-mongo] MongoDB Driver initialized.\n");
-    printf(" [samp-mongo] Plugin loaded successfully!\n");
-    return true;
-}
+    unsigned int PLUGIN_CALL Supports() {
+        return SUPPORTS_VERSION | SUPPORTS_AMX_NATIVES;
+    }
 
-PLUGIN_EXPORT void PLUGIN_CALL Unload() {
-    printf(" [samp-mongo] Plugin unloaded.\n");
-}
+    // Eklenti yüklendiğinde çalışır
+    bool PLUGIN_CALL Load(void **ppData) {
+        pAMXFunctions = ppData[PLUGIN_DATA_AMX_EXPORTS];
+        
+        // Log fonksiyonunu alıyoruz
+        logprintf = (logprintf_t)ppData[PLUGIN_DATA_LOGPRINTF];
 
-PLUGIN_EXPORT int PLUGIN_CALL AmxLoad(AMX *amx) {
-    return AMX_ERR_NONE;
-}
+        logprintf(" >> samp-mongo eklentisi basariyla yuklendi! (v0.1)");
+        return true;
+    }
 
-PLUGIN_EXPORT int PLUGIN_CALL AmxUnload(AMX *amx) {
-    return AMX_ERR_NONE;
+    void PLUGIN_CALL Unload() {
+        logprintf(" >> samp-mongo eklentisi kapatiliyor.");
+    }
+
+    void PLUGIN_CALL ProcessTick() {
+    }
 }

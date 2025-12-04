@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
 
-# Proje ismi
 project(samp-mongo CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -13,7 +12,7 @@ endif()
 find_package(mongocxx CONFIG REQUIRED)
 find_package(bsoncxx CONFIG REQUIRED)
 
-add_library(samp-mongo SHARED src/main.cpp)
+add_library(samp-mongo SHARED src/main.cpp samp-mongo.def)
 
 target_compile_definitions(samp-mongo PRIVATE HAVE_STDINT_H)
 

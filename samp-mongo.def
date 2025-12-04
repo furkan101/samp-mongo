@@ -1,0 +1,6 @@
+LIBRARY samp-mongo
+EXPORTS
+    Supports
+    Load
+    Unload
+    ProcessTick
