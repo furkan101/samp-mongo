@@ -1,0 +1,39 @@
+# Prerequisites
+*.d
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+*.exe
+*.pdb
+*.exp
+*.ilk
+*.log
+
+# Build Directories
+build/
+out/
+bin/
+CMakeSettings.json
+
+# Visual Studio Code & IDE Caches
+.vscode/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# vcpkg (Bağımlılık Yöneticisi)
+# vcpkg.json'ı takip etmeliyiz ama vcpkg'nin kendisini ve indirdiği paketleri değil.
+vcpkg/
+vcpkg_installed/
+
+# SA:MP Server Files (Test sunucusu dosyaları karışmasın)
+server_log.txt
+gamemodes/
+scriptfiles/
+npcmodes/

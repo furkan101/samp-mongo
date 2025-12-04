@@ -1,0 +1,7 @@
+{
+    "name": "samp-mongo",
+    "version-string": "0.1.0",
+    "dependencies": [
+      "mongo-cxx-driver"
+    ]
+}
