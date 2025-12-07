@@ -3,23 +3,15 @@
 #endif
 #define _samp_mongo_included
 
-// Baglanti ve Yapi
-native Mongo_Connect(const uri[], const database[]);
-native Mongo_NewDocument();
+#define MG_INSERT 1
+#define MG_FIND   2
 
-// Veri Ekleme (Builder)
-native Mongo_AddString(const key[], const value[]);
-native Mongo_AddInt(const key[], value);
-native Mongo_AddFloat(const key[], Float:value);
-
-// Islem Fonksiyonlari
-native Mongo_Insert(connectionID, const collection[]);
-native Mongo_Find(connectionID, const collection[]);
-native Mongo_Next(resultID);
-native Mongo_FreeResult(resultID);
-native Mongo_GetStr(resultID, const key[], dest[], size = sizeof(dest));
-native Mongo_GetInt(resultID, const key[]);
-
-// YENI: Guncelleme ve Silme
-native Mongo_Update(connectionID, const collection[], const filter_key[], const filter_value[]);
-native Mongo_Delete(connectionID, const collection[]);
+native MG_Connect(const uri[], const database[]);
+native MG_CreateDoc();
+native MG_AddString(const key[], const value[]);
+native MG_AddInt(const key[], value);
+native MG_QueryAsync(connID, const collection[], type, const callback[], playerid = -1);
+native MG_ResultNext(resultID);
+native MG_GetResultString(resultID, const key[], dest[], size = sizeof(dest));
+native MG_GetResultInt(resultID, const key[]);
+native MG_FreeResult(resultID);

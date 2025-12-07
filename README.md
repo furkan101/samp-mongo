@@ -1,97 +1,103 @@
-
 # samp-mongo
 
-**[EN]** A modern, high-performance, statically linked MongoDB plugin for SA-MP (San Andreas Multiplayer), written in C++17 using the official MongoDB C++ Driver.
+**[EN]** A modern, modular, and high-performance asynchronous MongoDB plugin for SA-MP (San Andreas Multiplayer), written in C++17.
+**[TR]** SA-MP için modern C++17 ile yazılmış, modüler, yüksek performanslı ve asenkron çalışan MongoDB eklentisi.
 
-**[TR]** SA-MP (San Andreas Multiplayer) için modern C++17 ve resmi MongoDB sürücüleri kullanılarak geliştirilmiş, yüksek performanslı ve statik linklenmiş bir MongoDB eklentisidir.
-
-----------
+---
 
 ## 🇺🇸 English Documentation
 
 ### Features
-
--   **Modern Architecture:** Built with C++17 and the official mongocxx driver.
-    
--   **Static Linking:** No external DLL dependencies required (Single file samp-mongo.dll).
-    
--   **Full CRUD Support:** Insert, Find, Update, and Delete operations.
-    
--   **Builder Pattern:** Construct BSON documents natively in Pawn without complex string formatting.
-    
--   **Connection Pooling:** Efficiently manages multiple database connections.
-    
+* **Modular Architecture:** Clean code structure separating Worker, Natives, and Core logic.
+* **True Asynchronous:** Non-blocking database operations using a dedicated background thread.
+* **Thread-Safe:** Implements Mutex locks and Task Queues to prevent server freezes or crashes.
+* **BSON Builder:** Native C++ BSON construction for fast data handling.
+* **Static Linking:** No external DLL dependencies required (except the plugin itself).
 
 ### Installation
-
-1.  Download the latest samp-mongo.dll from the Releases page.
-    
-2.  Copy the file to your server's plugins/ folder.
-    
-3.  Copy samp-mongo.inc to your pawno/include/ folder.
-    
-4.  Add "plugins samp-mongo" (or .so for Linux) to your server.cfg.
-    
+1.  Download the latest `samp-mongo.dll` (Windows) or `.so` (Linux) from Releases.
+2.  Copy the file to your server's `plugins/` folder.
+3.  Copy `samp-mongo-v2.inc` to your `pawno/include/` folder.
+4.  Add `plugins samp-mongo` to your `server.cfg`.
 
 ### Usage Example (Pawn)
 
-```
-#include <samp-mongo>
+```pawn
+#include <a_samp>
+#include <samp-mongo-v2>
 
-new DB_Conn;
+new DB;
 
-public OnGameModeInit()
+// Callback to handle results
+forward OnUserDataLoaded(resultid, playerid);
+public OnUserDataLoaded(resultid, playerid)
 {
-    // 1. Connect to Database
-    DB_Conn = Mongo_Connect("mongodb://localhost:27017", "GameServer");
-
-    if(DB_Conn > 0)
+    // Iterate through results
+    while(MG_ResultNext(resultid))
     {
-        // 2. Insert Data
-        Mongo_NewDocument(); // Reset builder
-        Mongo_AddString("Username", "Furkan");
-        Mongo_AddInt("Score", 150);
-        Mongo_Insert(DB_Conn, "Players");
-
-        // 3. Find Data
-        Mongo_NewDocument();
-        Mongo_AddString("Username", "Furkan"); // Filter
+        new name[24], score;
+        MG_GetResultString(resultid, "Username", name);
+        score = MG_GetResultInt(resultid, "Score");
         
-        new result = Mongo_Find(DB_Conn, "Players");
-        while(Mongo_Next(result))
-        {
-            new name[24], score;
-            Mongo_GetStr(result, "Username", name);
-            score = Mongo_GetInt(result, "Score");
-            printf("Found: %s - Score: %d", name, score);
-        }
-        Mongo_FreeResult(result);
-        
-        // 4. Update Data
-        Mongo_NewDocument();
-        Mongo_AddInt("Score", 200); // New value
-        // Update documents where "Username" equals "Furkan":
-        Mongo_Update(DB_Conn, "Players", "Username", "Furkan");
-        
-        // 5. Delete Data
-        Mongo_NewDocument();
-        Mongo_AddString("Username", "Furkan");
-        Mongo_Delete(DB_Conn, "Players");
+        printf("Found User: %s | Score: %d", name, score);
     }
+    
+    // Always free the result memory!
+    MG_FreeResult(resultid);
     return 1;
 }
 
+public OnGameModeInit()
+{
+    // 1. Connect
+    DB = MG_Connect("mongodb://localhost:27017", "GameDB");
+
+    // 2. Insert Data (Fire and Forget)
+    MG_CreateDoc();
+    MG_AddString("Username", "PlayerOne");
+    MG_AddInt("Score", 1500);
+    MG_QueryAsync(DB, "Users", MG_INSERT, "", -1);
+
+    // 3. Find Data (Async with Callback)
+    MG_CreateDoc();
+    MG_AddString("Username", "PlayerOne"); // Filter
+    
+    // Trigger "OnUserDataLoaded" when finished
+    MG_QueryAsync(DB, "Users", MG_FIND, "OnUserDataLoaded", 0);
+
+    return 1;
+}
 ```
 
-### Building from Source
+### Build Instructions (For Developers)
 
-1.  Install CMake and Visual Studio 2022.
+Requirements:
+
+-   Visual Studio 2022 (C++ Desktop Development)
     
-2.  Install mongo-cxx-driver:x86-windows-static using vcpkg.
+-   CMake 3.15+
     
-3.  Clone the repository and build:
+-   **vcpkg** (for dependencies)
     
-    cmake --preset samp-x86-debug cmake --build --preset debug
+
+1.  Install dependencies:
+    
+    Bash
+    
+    ```
+    vcpkg install mongo-cxx-driver:x86-windows-static
+    
+    ```
+    
+2.  Configure and Build:
+    
+    Bash
+    
+    ```
+    cmake -S . -B build -G "Visual Studio 17 2022" -A Win32 -DCMAKE_TOOLCHAIN_FILE=[PATH_TO_VCPKG]/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-static
+    cmake --build build --config Release
+    
+    ```
     
 
 ----------
@@ -100,89 +106,107 @@ public OnGameModeInit()
 
 ### Özellikler
 
--   **Modern Mimari:** C++17 ve resmi mongocxx sürücüsü.
+-   **Modüler Mimari:** İşçi (Worker), Native ve Çekirdek (Core) mantığı ayrılmış temiz yapı.
     
--   **Statik Linkleme:** Yanında ekstra DLL dosyaları taşımanıza gerek yoktur (Tek dosya samp-mongo.dll).
+-   **Tam Asenkron:** Arka plan iş parçacığı (Thread) sayesinde sunucuyu asla dondurmaz (Lag yapmaz).
     
--   **Tam CRUD Desteği:** Veri Ekleme, Okuma, Güncelleme ve Silme işlemleri.
+-   **Thread-Safe:** Çökme ve veri kaybını önleyen Mutex ve Kuyruk sistemi.
     
--   **Builder Yapısı:** Pawn içinde karmaşık JSON stringleri ile uğraşmanıza gerek kalmaz. Verileri fonksiyonlarla eklersiniz.
-    
--   **Çoklu Bağlantı:** Aynı anda birden fazla veritabanına bağlanabilme.
+-   **Statik Linkleme:** Ekstra DLL dosyalarına ihtiyaç duymaz, tek dosya çalışır.
     
 
 ### Kurulum
 
-1.  Releases sayfasından güncel samp-mongo.dll dosyasını indirin.
+1.  Releases kısmından güncel `samp-mongo.dll` dosyasını indirin.
     
-2.  Dosyayı sunucunuzun plugins/ klasörüne atın.
+2.  Dosyayı sunucunuzun `plugins/` klasörüne atın.
     
-3.  samp-mongo.inc dosyasını pawno/include/ klasörüne atın.
+3.  `samp-mongo-v2.inc` dosyasını `pawno/include/` klasörüne kopyalayın.
     
-4.  server.cfg dosyasına "plugins samp-mongo" (Linux için .so) satırını ekleyin.
+4.  `server.cfg` dosyasına `plugins samp-mongo` satırını ekleyin.
     
 
 ### Kullanım Örneği (Pawn)
 
+Kod snippet'i
+
 ```
-#include <samp-mongo>
+#include <a_samp>
+#include <samp-mongo-v2>
 
 new DB_Baglanti;
 
+// Veri geldiğinde çalışacak fonksiyon (Callback)
+forward OyuncuVerisiGeldi(sonucid, oyuncuid);
+public OyuncuVerisiGeldi(sonucid, oyuncuid)
+{
+    // Gelen sonuçlar arasında dön
+    while(MG_ResultNext(sonucid))
+    {
+        new isim[24], skor;
+        MG_GetResultString(sonucid, "KullaniciAdi", isim);
+        skor = MG_GetResultInt(sonucid, "Skor");
+        
+        printf("Bulunan Oyuncu: %s | Skor: %d", isim, skor);
+    }
+    
+    // Hafızayı temizlemeyi unutmayın!
+    MG_FreeResult(sonucid);
+    return 1;
+}
+
 public OnGameModeInit()
 {
-    // 1. Veritabanına Bağlan
-    DB_Baglanti = Mongo_Connect("mongodb://localhost:27017", "OyunSunucusu");
+    // 1. Bağlan
+    DB_Baglanti = MG_Connect("mongodb://localhost:27017", "OyunSunucusu");
 
-    if(DB_Baglanti > 0)
-    {
-        // 2. Veri Ekleme (Insert)
-        Mongo_NewDocument(); // Sepeti hazırla
-        Mongo_AddString("Kullanici", "Furkan");
-        Mongo_AddInt("Skor", 150);
-        Mongo_Insert(DB_Baglanti, "Oyuncular");
+    // 2. Veri Ekle (Cevap beklemeye gerek yok)
+    MG_CreateDoc();
+    MG_AddString("KullaniciAdi", "Ahmet");
+    MG_AddInt("Skor", 500);
+    MG_QueryAsync(DB_Baglanti, "Oyuncular", MG_INSERT, "", -1);
 
-        // 3. Veri Çekme (Find)
-        Mongo_NewDocument();
-        Mongo_AddString("Kullanici", "Furkan"); // Filtrele
-        
-        new sonuc = Mongo_Find(DB_Baglanti, "Oyuncular");
-        while(Mongo_Next(sonuc))
-        {
-            new isim[24], skor;
-            Mongo_GetStr(sonuc, "Kullanici", isim);
-            skor = Mongo_GetInt(sonuc, "Skor");
-            printf("Bulunan: %s - Skor: %d", isim, skor);
-        }
-        Mongo_FreeResult(sonuc);
-        
-        // 4. Güncelleme (Update)
-        Mongo_NewDocument();
-        Mongo_AddInt("Skor", 200); // Yeni değer
-        // Kimi güncelleyeceğini 3. ve 4. parametrede belirt:
-        Mongo_Update(DB_Baglanti, "Oyuncular", "Kullanici", "Furkan");
-        
-        // 5. Silme (Delete)
-        Mongo_NewDocument();
-        Mongo_AddString("Kullanici", "Furkan"); // Filtre
-        Mongo_Delete(DB_Baglanti, "Oyuncular");
-    }
+    // 3. Veri Çek (Callback ile)
+    MG_CreateDoc();
+    MG_AddString("KullaniciAdi", "Ahmet"); // Filtrele
+    
+    // İşlem bitince "OyuncuVerisiGeldi" fonksiyonunu çağır
+    MG_QueryAsync(DB_Baglanti, "Oyuncular", MG_FIND, "OyuncuVerisiGeldi", 0);
+
     return 1;
 }
 
 ```
 
-### Derleme (Geliştiriciler İçin)
+### Kaynak Koddan Derleme
 
-Projeyi kaynak kodundan derlemek isterseniz:
+Gereksinimler:
 
-1.  CMake ve Visual Studio 2022 (C++ araçlarıyla) kurun.
+-   Visual Studio 2022
     
-2.  vcpkg kullanarak mongo-cxx-driver:x86-windows-static paketini kurun.
+-   CMake 3.15+
     
-3.  Projeyi klonlayın ve aşağıdaki komutla derleyin:
+-   **vcpkg** (Kütüphaneler için)
     
-    cmake --preset samp-x86-debug cmake --build --preset debug
+
+1.  Kütüphaneleri kurun:
+    
+    Bash
+    
+    ```
+    vcpkg install mongo-cxx-driver:x86-windows-static
+    
+    ```
+    
+2.  Yapılandır ve Derle:
+    
+    Bash
+    
+    ```
+    cmake -S . -B build -G "Visual Studio 17 2022" -A Win32 -DCMAKE_TOOLCHAIN_FILE=[VCPKG_YOLU]/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-static
+    cmake --build build --config Release
+    
+    ```
     
 
 ## License
