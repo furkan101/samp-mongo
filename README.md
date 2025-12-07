@@ -19,7 +19,7 @@ A high-performance, asynchronous, and thread-safe MongoDB plugin for SA-MP, writ
 ### 1. Connect
 ```C++
 #include <a_samp>
-#include <samp-mongo-v2>
+#include <samp-mongo>
 
 new DB;
 
