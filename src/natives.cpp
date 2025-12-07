@@ -1,6 +1,11 @@
 #include "natives.h"
 #include "worker.h"
 #include <plugincommon.h> 
+#include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/builder/stream/helpers.hpp>
+
+using bsoncxx::builder::stream::document;
+using bsoncxx::builder::stream::finalize;
 
 std::string GetPawnString(AMX* amx, cell param) {
     cell* addr = NULL;
@@ -15,6 +20,11 @@ std::string GetPawnString(AMX* amx, cell param) {
     return res;
 }
 
+Task* GetTaskResult(int resultID) {
+    if (resultID < 0 || resultID >= g_ResultCache.size()) return nullptr;
+    return g_ResultCache[resultID];
+}
+
 cell AMX_NATIVE_CALL MG_Connect(AMX* amx, cell* params) {
     std::string uri = GetPawnString(amx, params[1]);
     std::string dbName = GetPawnString(amx, params[2]);
@@ -22,7 +32,8 @@ cell AMX_NATIVE_CALL MG_Connect(AMX* amx, cell* params) {
         auto client = new mongocxx::client{mongocxx::uri{uri}};
         g_Clients.push_back(client);
         g_Databases.push_back(client->database(dbName));
-        return g_Databases.size();
+        g_Databases.back().run_command(document{} << "ping" << 1 << finalize);
+        return g_Databases.size(); 
     } catch (...) { return 0; }
 }
 
@@ -51,7 +62,6 @@ cell AMX_NATIVE_CALL MG_QueryAsync(AMX* amx, cell* params) {
     task->amxInstance = amx;
 
     std::string cbName = GetPawnString(amx, params[4]);
-    
     if (!cbName.empty()) {
         task->hasCallback = true;
         task->callbackFunc = cbName;
@@ -60,24 +70,51 @@ cell AMX_NATIVE_CALL MG_QueryAsync(AMX* amx, cell* params) {
         task->hasCallback = false;
     }
 
-    if (type == 1) {
-        task->type = RequestType::INSERT;
-        task->data = g_BsonBuilder->view();
-    } 
-    else if (type == 2) {
+    if (type == 3) {
         task->type = RequestType::FIND;
         task->filter = g_BsonBuilder->view();
+    } 
+    else if (type == 2) {
+        task->type = RequestType::DELETE;
+        task->filter = g_BsonBuilder->view();
+    }
+    else {
+        task->type = RequestType::INSERT;
+        task->data = g_BsonBuilder->view();
     }
 
     AddTask(task);
-    
     g_BsonBuilder = std::make_unique<bsoncxx::builder::stream::document>(); 
     return 1;
 }
 
-Task* GetTaskResult(int resultID) {
-    if (resultID < 0 || resultID >= g_ResultCache.size()) return nullptr;
-    return g_ResultCache[resultID];
+cell AMX_NATIVE_CALL MG_UpdateAsync(AMX* amx, cell* params) {
+    if (!g_BsonBuilder) return 0;
+
+    Task* task = new Task();
+    task->connectionID = params[1];
+    task->collection = GetPawnString(amx, params[2]);
+    task->type = RequestType::UPDATE;
+    task->amxInstance = amx;
+
+    std::string key = GetPawnString(amx, params[3]);
+    std::string val = GetPawnString(amx, params[4]);
+    task->filter = document{} << key << val << finalize;
+
+    task->data = g_BsonBuilder->view();
+
+    std::string cbName = GetPawnString(amx, params[5]);
+    if (!cbName.empty()) {
+        task->hasCallback = true;
+        task->callbackFunc = cbName;
+        task->playerID = params[6];
+    } else {
+        task->hasCallback = false;
+    }
+
+    AddTask(task);
+    g_BsonBuilder = std::make_unique<bsoncxx::builder::stream::document>();
+    return 1;
 }
 
 cell AMX_NATIVE_CALL MG_ResultNext(AMX* amx, cell* params) {
@@ -98,7 +135,6 @@ cell AMX_NATIVE_CALL MG_GetResultString(AMX* amx, cell* params) {
         auto doc = task->results[task->currentIter].view();
         if (doc[key] && doc[key].type() == bsoncxx::type::k_string) {
             std::string val = std::string(doc[key].get_string().value);
-            
             cell* addr = NULL;
             amx_GetAddr(amx, params[3], &addr);
             amx_SetString(addr, val.c_str(), 0, 0, params[4]);
@@ -141,6 +177,7 @@ AMX_NATIVE_INFO PluginNatives[] = {
     {"MG_AddString", MG_AddString},
     {"MG_AddInt", MG_AddInt},
     {"MG_QueryAsync", MG_QueryAsync},
+    {"MG_UpdateAsync", MG_UpdateAsync},
     {"MG_ResultNext", MG_ResultNext},
     {"MG_GetResultString", MG_GetResultString},
     {"MG_GetResultInt", MG_GetResultInt},
