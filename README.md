@@ -30,8 +30,6 @@ public OnGameModeInit() {
 ```
 ### 2. Insert (Create)
 
-Kod snippet'i
-
 ```C++
 MG_CreateDoc();
 MG_AddString("Username", "Player1");
@@ -41,8 +39,6 @@ MG_QueryAsync(DB, "Users", MG_INSERT);
 ```
 
 ### 3. Find (Read)
-
-Kod snippet'i
 
 ```C++
 MG_CreateDoc();
@@ -63,8 +59,6 @@ public OnUserLoaded(resultid, playerid) {
 ```
 ### 4. Update
 
-Kod snippet'i
-
 ```C++
 // Data to update
 MG_CreateDoc();
@@ -76,8 +70,6 @@ MG_UpdateAsync(DB, "Users", "Username", "Player1");
 ```
 
 ### 5. Delete
-
-Kod snippet'i
 
 ```C++
 // Filter
